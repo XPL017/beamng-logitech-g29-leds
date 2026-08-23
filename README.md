@@ -26,28 +26,53 @@ You can enter the Max RPM of the car you're using at any time by typing the numb
 
 ## 💻 How to use it?
 
-Before starting, ensure that you have Node.js installed. If not, you can download it from [here](https://nodejs.org/en/download/).
+### What you need first
 
-Clone the repository:
+This is a **command-line program**, so everything happens in a terminal window — no icons to click. You need two things:
+
+1. **Node.js** (version 18 or newer). If you don't have it, download and install the "LTS" version from [nodejs.org](https://nodejs.org/en/download/).
+2. A **terminal** (already on your computer):
+   - **Windows:** press `Win + R`, type `cmd`, press Enter (or use PowerShell from the Start menu)
+   - **macOS:** press `Cmd + Space`, type `Terminal`, press Enter
+   - **Linux:** press `Ctrl + Alt + T`
+
+Type each of the commands below into that window, pressing Enter after each one.
+
+### Step-by-step setup
+
+Clone the repository (downloads this project):
 
 ```bash
 git clone https://github.com/artis101/beamng-logitech-g29-leds
 ```
 
-Install the dependencies:
+Move into the project folder:
 
 ```bash
 cd beamng-logitech-g29-leds
-yarn install
+```
+
+Install the dependencies:
+
+```bash
+npm install
 ```
 
 Run the utility:
 
 ```bash
-node main.js
+npm start
 ```
 
-Use Ctrl-C to exit the program.
+> 💡 On Linux you may need extra permissions to talk to the wheel over USB. If you get a "cannot find or open" error, try running with `sudo` or set up the appropriate udev rules for your distribution.
+>
+> 🎮 **Supported wheels:** the underlying [`logitech-g29`](https://www.npmjs.com/package/logitech-g29) library supports the Logitech **G29** (and G290). The **G923** and **G920** are *not* currently detected by this library — see [issue #5](https://github.com/artis101/beamng-logitech-g29-leds/issues/5).
+
+### While it's running
+
+- Before BeamNG.drive connects, the utility runs in **test mode**: the LEDs respond to your gas pedal so you can verify everything works.
+- Once BeamNG.drive sends data, it switches to **game mode**: LEDs reflect the car's RPM in real time.
+- Type any number and press Enter to change the Max RPM on the fly (default: 7000). Type `test` to return to test mode, or `q` / `quit` / `exit` to quit.
 
 That's it! Enjoy your immersive gaming experience. 🎮
 
