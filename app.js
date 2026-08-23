@@ -37,7 +37,7 @@ function createAndBindSocket(port, address) {
 
 function connectToLogitechG29() {
   try {
-    logitech.connect(function (err) {
+    logitech.connect({ autocenter: false }, function (err) {
       if (err) {
         logError("Failed to connect to the steering wheel:", err);
         process.exit(1);
