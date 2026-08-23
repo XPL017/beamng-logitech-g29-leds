@@ -77,6 +77,11 @@ function handleTestMode() {
 
   createProgressBars();
 
+  // avoid stacking duplicate listeners when re-entering test mode
+  logitech.removeAllListeners("pedals-gas");
+  logitech.removeAllListeners("pedals-brake");
+  logitech.removeAllListeners("pedals-clutch");
+
   logitech.on("pedals-gas", handleGasPedalValueCb);
 
   logitech.on("pedals-brake", handleBrakePedalValueCb);
@@ -115,6 +120,8 @@ function parseUDPMessage(msg, maxRpm) {
       // round up the maxrpm based on current rpms
       maxRpm = Math.ceil(currentRpm / 1000) * 1000;
       logitech.leds(flashState);
+      // return the adjusted value so the caller can persist it
+      return maxRpm;
     } else if (rpmFraction <= 0) {
       logitech.leds(0);
     } else {
@@ -157,7 +164,18 @@ function handleGameMode(configuredMaxRpms) {
     output: process.stdout,
   });
 
-  rl.on("line", handleUserInput);
+  rl.on("line", (input) => {
+    // readline only passes the input string, so we must close over the
+    // current state and forward the real dependencies ourselves
+    currentMaxRpm = handleUserInput(
+      input,
+      currentMaxRpm,
+      logInfo,
+      logWarning,
+      handleTestMode,
+      cleanupAndExit
+    );
+  });
 
   socket.on("message", (msg) => {
     // If this is the first message, switch to game mode
@@ -170,7 +188,9 @@ function handleGameMode(configuredMaxRpms) {
     }
 
     if (!inTestMode) {
-      parseUDPMessage(msg, currentMaxRpm);
+      // parseUDPMessage may auto-adjust maxRpm when the car revs higher
+      // than the configured value; persist it for subsequent messages
+      currentMaxRpm = parseUDPMessage(msg, currentMaxRpm) || currentMaxRpm;
     }
   });
 
@@ -188,7 +208,7 @@ function cleanupAndExit() {
     });
   }
 
-  if (!socket._handle) {
+  if (!socket || !socket._handle) {
     logInfo("[INFO] UDP socket closed");
     process.exit();
   } else {

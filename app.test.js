@@ -1,12 +1,14 @@
 const dgram = require("dgram");
+const readline = require("readline");
 const logitech = require("logitech-g29");
 const { runApp, handleUserInput } = require("./app");
 const { createMockMessage } = require("./testUtils");
+const { logWarning } = require("./userInterface");
 
 jest.mock("dgram");
 jest.mock("readline", () => ({
   createInterface: jest.fn(() => ({
-    on: jest.fn(() => jest.fn()),
+    on: jest.fn(),
   })),
 }));
 jest.mock("logitech-g29", () => ({
@@ -14,6 +16,7 @@ jest.mock("logitech-g29", () => ({
   on: jest.fn(),
   leds: jest.fn(),
   disconnect: jest.fn(),
+  removeAllListeners: jest.fn(),
 }));
 jest.mock("./userInterface");
 
@@ -238,6 +241,51 @@ describe("app.js tests", () => {
       // Assert
       expect(updatedMaxRpm).toBe(currentMaxRpm);
       expect(mockCleanupAndExit).toHaveBeenCalled();
+    });
+  });
+
+  describe("game mode integration tests", () => {
+    function getLineHandler() {
+      const results = readline.createInterface.mock.results;
+      const rl = results[results.length - 1].value;
+      const call = rl.on.mock.calls.find(([event]) => event === "line");
+      return call[1];
+    }
+
+    test("typing a new Max RPM in game mode updates LED scaling without crashing", () => {
+      // Arrange
+      runApp({ port: 4444, address: "127.0.0.1", maxRpm: 7000 });
+      const lineHandler = getLineHandler();
+      const messageHandler = mockSocket.on.mock.calls[0][1];
+
+      // Act: change Max RPM to 9000 while running
+      lineHandler("9000");
+
+      // 4500 is 50% of the new 9000 max -> steady LEDs at 0.5.
+      // Against the old default (7000) this would be ~64%, so this
+      // assertion only passes if the input was actually applied.
+      messageHandler(createMockMessage(4500), 9000);
+
+      // Assert
+      expect(logitech.leds).toHaveBeenLastCalledWith(0.5);
+    });
+
+    test("over-revving past Max RPM adjusts it once and persists the adjustment", () => {
+      // Arrange
+      logWarning.mockClear();
+      runApp({ port: 4444, address: "127.0.0.1", maxRpm: 7000 });
+      const messageHandler = mockSocket.on.mock.calls[0][1];
+
+      // Act: rev to 7500 with maxRpm 7000 -> should warn once and raise maxRpm to 8000
+      messageHandler(createMockMessage(7500), 7000);
+      // 4000 is exactly 50% of the persisted 8000 max
+      // (against a stale 7000 max it would be ~57%, failing the assertion below)
+      messageHandler(createMockMessage(4000), 7000);
+
+      // Assert: warning fired exactly once (previously it re-warned for every packet)
+      expect(logWarning).toHaveBeenCalledTimes(1);
+      // and the adjusted Max RPM is used for scaling (50% -> leds 0.5)
+      expect(logitech.leds).toHaveBeenLastCalledWith(0.5);
     });
   });
 });
