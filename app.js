@@ -78,9 +78,9 @@ function handleTestMode() {
   createProgressBars();
 
   // avoid stacking duplicate listeners when re-entering test mode
-  logitech.removeAllListeners("pedals-gas");
-  logitech.removeAllListeners("pedals-brake");
-  logitech.removeAllListeners("pedals-clutch");
+  logitech.emitter.removeAllListeners("pedals-gas");
+  logitech.emitter.removeAllListeners("pedals-brake");
+  logitech.emitter.removeAllListeners("pedals-clutch");
 
   logitech.on("pedals-gas", handleGasPedalValueCb);
 
